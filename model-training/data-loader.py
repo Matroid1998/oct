@@ -67,9 +67,14 @@ class ContrastiveOCTDataset(Dataset):
         return (positive1_image,positive2_image,*negative_images)
 
     def _select_negative_samples(self,index,groupings,key):
-        positive_indices = groupings[key]
-        negative_indices = [i for i in range(len(self.data)) if i not in positive_indices]
-        return torch.randint(0,len(negative_indices),(self.num_negatives,))
+        if key not in groupings:
+            # Handle the case where the key is not found in the groupings
+            # For example, you can choose random indices from the entire dataset
+            return torch.randint(0,len(self.data),(self.num_negatives,))
+        else:
+            positive_indices = groupings[key]
+            negative_indices = [i for i in range(len(self.data)) if i not in positive_indices]
+            return torch.randint(0,len(negative_indices),(self.num_negatives,))
 
     def load_image(self,path):
         image = Image.open(path).convert('RGB')
