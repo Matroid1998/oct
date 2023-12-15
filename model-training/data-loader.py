@@ -7,11 +7,25 @@ import os
 from torch.utils.data import DataLoader
 
 class ContrastiveOCTDataset(Dataset):
-    def __init__(self,data,num_negatives = 10,transform = None,image_size=(299, 299)):
-        self.data = data  # List of paths to your images
+    def __init__(self, data, num_negatives=10, transform=None, image_size=(299, 299)):
+        self.data = data
         self.num_negatives = num_negatives
-        self.transform = transform  # Your augmentation function
+        self.transform = transform
         self.image_size = image_size
+
+        # Pre-compute groupings
+        self.patient_groupings = self._create_groupings(lambda path: self.extract_patient_id(path))
+        self.disease_groupings = self._create_groupings(lambda path: self.extract_disease(path))
+        self.spatial_groupings = self._create_groupings(lambda path: self.extract_patient_id_and_image_number(path)[0])
+
+    def _create_groupings(self, key_function):
+        groupings = {}
+        for idx, path in enumerate(self.data):
+            key = key_function(path)
+            if key not in groupings:
+                groupings[key] = []
+            groupings[key].append(idx)
+        return groupings
     def __len__(self):
         return len(self.data)
 
@@ -19,40 +33,43 @@ class ContrastiveOCTDataset(Dataset):
         anchor_image_path = self.data[index]
         anchor_image = self.load_image(anchor_image_path)
         anchor_disease = self.extract_disease(anchor_image_path)
-        anchor_patient_id, anchor_image_number = self.extract_patient_id_and_image_number(anchor_image_path)
-        strategy = np.random.choice(['typical', 'patient', 'disease', 'spatial'])
+        anchor_patient_id,anchor_image_number = self.extract_patient_id_and_image_number(anchor_image_path)
+        strategy = np.random.choice(['typical','patient','disease','spatial'])
         positive1_image = anchor_image
 
+        # Selecting positive and negative pairs based on the strategy
         if strategy == 'typical':
-            positive2_image = self.load_image(anchor_image_path)
-            negative_indices = torch.randint(0, len(self.data), (self.num_negatives,))
-            negative_images = [self.load_image(self.data[i]) for i in negative_indices]
+            positive2_image = self.load_image(anchor_image_path)  # Same image but different augmentation
+            negative_indices = torch.randint(0,len(self.data),(self.num_negatives,))
         else:
             if strategy == 'patient':
-                other_images_same_patient = [path for path in self.data if
-                                             self.extract_patient_id(path) == anchor_patient_id]
-                negative_indices = [i for i in range(len(self.data)) if
-                                    self.extract_patient_id(self.data[i]) != anchor_patient_id]
+                positive_images = self.patient_groupings[anchor_patient_id]
             elif strategy == 'disease':
-                other_images_same_patient = [path for path in self.data if self.extract_disease(path) == anchor_disease]
-                negative_indices = [i for i in range(len(self.data)) if
-                                    self.extract_disease(self.data[i]) != anchor_disease]
+                positive_images = self.disease_groupings[anchor_disease]
             elif strategy == 'spatial':
-                other_images_same_patient = [path for path in self.data if
-                                             self.extract_patient_id_and_image_number(path)[0] == anchor_patient_id and abs(
-                                                 int(self.extract_patient_id_and_image_number(path)[
-                                                         1])-anchor_image_number) == 1]
-                negative_indices = [i for i in range(len(self.data)) if
-                                    self.extract_patient_id(self.data[i]) != anchor_patient_id]
-            if len(other_images_same_patient) >= 2:
-                positive2_image_path = np.random.choice(other_images_same_patient)
-                positive2_image = self.load_image(positive2_image_path)
+                positive_images = self.spatial_groupings[anchor_patient_id]
+
+            # Choose a different positive image
+            if len(positive_images) > 1:
+                positive_images.remove(index)
+                positive2_index = np.random.choice(positive_images)
+                positive2_image = self.load_image(self.data[positive2_index])
             else:
                 positive2_image = positive1_image
-            negative_indices = torch.randint(0,len(negative_indices),(self.num_negatives,))
-            negative_images = [self.load_image(self.data[i]) for i in negative_indices]
 
-        return (positive1_image,positive2_image, *negative_images)
+            negative_indices = self._select_negative_samples(index,self.patient_groupings if strategy in ['patient',
+                                                                                                          'spatial'] else self.disease_groupings,
+                                                             anchor_patient_id if strategy in ['patient',
+                                                                                               'spatial'] else anchor_disease)
+
+        negative_images = [self.load_image(self.data[i]) for i in negative_indices]
+
+        return (positive1_image,positive2_image,*negative_images)
+
+    def _select_negative_samples(self,index,groupings,key):
+        positive_indices = groupings[key]
+        negative_indices = [i for i in range(len(self.data)) if i not in positive_indices]
+        return torch.randint(0,len(negative_indices),(self.num_negatives,))
 
     def load_image(self,path):
         image = Image.open(path).convert('RGB')
