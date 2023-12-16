@@ -21,29 +21,36 @@ train_transforms = transforms.Compose([
 model = ContrastiveModel(output_dim=512)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 loss_fn = CustomNTXentLoss(temperature=0.5)
-train_loader = DataLoader(ContrastiveOCTDataset(data_paths,num_negatives = 64, transform=train_transforms), batch_size=2, shuffle=True)
+train_loader = DataLoader(ContrastiveOCTDataset(data_paths,num_negatives = 10, transform=train_transforms), batch_size=2, shuffle=True)
 
 num_epochs = 10
 
 for epoch in range(num_epochs):
     model.train()
     total_loss = 0
-
     for batch in train_loader:
-        positive1_images, positive2_images, *negative_images = batch
-        print(positive1_images)
-        # positive1_images, positive2_images = positive1_images.to(device), positive2_images.to(device)
-        # negative_images = [img.to(device) for img in negative_images]
+        positive1_images,positive2_images,*negative_images = batch
+        # positive1_images,positive2_images = positive1_images.to(device),positive2_images.to(device)
+
+        # Concatenate all negative images into a single batch
+        all_negatives = torch.cat(negative_images,dim = 0)
+        # .to(device)
+
+        # Forward pass for positives and all negatives at once
         z_positive1 = model(positive1_images)
         z_positive2 = model(positive2_images)
-        z_negatives = [model(neg) for neg in negative_images]
+        z_negatives = model(all_negatives)
+
+        # Reshape z_negatives back to list of tensors for each negative sample
+        z_negatives = z_negatives.split(positive1_images.size(0))
 
         # Loss calculation
-        loss = loss_fn(z_positive1, z_positive2, z_negatives)
+        loss = loss_fn(z_positive1,z_positive2,z_negatives)
         total_loss += loss.item()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         print(loss)
+
     avg_loss = total_loss / len(train_loader)
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
