@@ -10,6 +10,7 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 import json
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 with open('config\config.json', 'r') as config_file:
     config = json.load(config_file)
@@ -36,7 +37,7 @@ train_transforms = transforms.Compose([
     transforms.RandomApply([transforms.GaussianBlur(kernel_size=3)], p=0.2),
     transforms.ToTensor(),
 ])
-model = ContrastiveModel(output_dim=output_dim)
+model = ContrastiveModel(output_dim=output_dim).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
 loss_fn = CustomNTXentLoss(temperature=temperature)
@@ -54,9 +55,8 @@ with open(log_filename, 'a') as log_file:
         for batch_idx, batch in progress_bar:
             optimizer.zero_grad()
             positive1_images,positive2_images,*negative_images = batch
-            # positive1_images,positive2_images = positive1_images.to(device),positive2_images.to(device)
-            all_negatives = torch.cat(negative_images,dim = 0)
-            # .to(device)
+            positive1_images,positive2_images = positive1_images.to(device),positive2_images.to(device)
+            all_negatives = torch.cat(negative_images,dim = 0).to(device)
             z_positive1 = model(positive1_images)
             z_positive2 = model(positive2_images)
             z_negatives = model(all_negatives)
