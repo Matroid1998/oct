@@ -11,7 +11,6 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 import json
 
-# Load configuration
 with open('config\config.json', 'r') as config_file:
     config = json.load(config_file)
 train_data_paths = config["train_data_path"]
@@ -42,18 +41,16 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=
 scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
 loss_fn = CustomNTXentLoss(temperature=temperature)
 train_loader = DataLoader(ContrastiveOCTDataset(data_paths,num_negatives = num_negatives, transform=train_transforms), batch_size=batch_size, shuffle=True)
-log_filename = f"training_log_{timestamp}.txt"
+log_filename = f"logs\\training_log_{timestamp}.txt"
 best_loss = float('inf')
-best_model_paths = [None, None]  # Store paths of the last two best models
+best_model_paths = [None, None]
 with open(log_filename, 'a') as log_file:
-
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0
         running_loss = 0
         best_ave_loss = 0
         progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch+1}/{num_epochs}")
-
         for batch_idx, batch in progress_bar:
             optimizer.zero_grad()
             positive1_images,positive2_images,*negative_images = batch
@@ -72,9 +69,7 @@ with open(log_filename, 'a') as log_file:
             tb_writer.add_scalar('Loss/train',loss,batch_idx)
             best_ave_loss += loss.item()
             scheduler.step()
-
             if batch_idx % save_interval == save_interval-1:
-
                 current_loss = best_ave_loss/save_interval
                 best_ave_loss = 0
                 if current_loss < best_loss:
@@ -86,21 +81,23 @@ with open(log_filename, 'a') as log_file:
                     best_model_paths[1] = os.path.join('saved_models',best_model_filename)
                     torch.save(model.state_dict(),best_model_paths[1])
                     print(f"New best model saved: {best_model_paths[1]}")
+                    print('________________________')
             if batch_idx % 10 == 9:
                 current_lr = scheduler.get_last_lr()[0]
                 tb_writer.add_scalar('Learning Rate',current_lr,epoch*len(train_loader)+batch_idx)
                 last_loss = total_loss / 10
-                log_message = f'Epoch {epoch+1}, Batch {batch_idx + 1}, Batch Loss: {last_loss}\n'
+                log_message = f'\nEpoch {epoch+1}, Batch {batch_idx + 1}, Batch Loss: {last_loss}\n'
                 log_file.write(log_message)
-                log_file.write(f'Learning rate : {current_lr}')
+                log_file.write(f'\nLearning rate : {current_lr}')
                 log_file.flush()
-                print('  batch {} loss: {}'.format(batch_idx + 1, last_loss))
+                print('\nbatch {} loss: {}'.format(batch_idx + 1, last_loss))
                 tb_x = epoch * len(train_loader) + batch_idx + 1
                 tb_writer.add_scalar('Loss/train', last_loss, tb_x)
                 running_loss = 0
+                print('____________')
         avg_loss = total_loss / len(train_loader)
         tb_writer.add_scalar('Epoch/Average Loss', avg_loss, epoch)
-        log_message = f'Epoch Completed: {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}\n'
+        log_message = f'\nEpoch Completed: {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}\n'
         log_file.write(log_message)
         log_file.flush()
-        print(f"Epoch Completed: {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}")
+        print(f"\nEpoch Completed: {epoch+1}/{num_epochs}, Average Loss: {avg_loss:.4f}")

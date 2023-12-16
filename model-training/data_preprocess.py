@@ -1,9 +1,11 @@
-import os
 import shutil
 import pandas as pd
-import numpy as np
-import random
 
+import scipy.io
+import numpy as np
+from PIL import Image
+import os
+import random
 def zh_dataset(dataset_path, output_folder,dataset_name):
     os.makedirs(output_folder, exist_ok=True)
     for foldername in os.listdir(dataset_path):
@@ -67,6 +69,25 @@ def NEH_dataset(dataset_path, output_folder , dataset_name):
                         shutil.copy(old_path,new_path)
                         num += 1
     return num
+def A2A_dataset(directory,output_directory,dis):
+    patient_ids = set()
+    def generate_patient_id():
+        while True:
+            patient_id = str(random.randint(100000,999999))
+            if patient_id not in patient_ids:
+                patient_ids.add(patient_id)
+                return patient_id
+    for filename in os.listdir(directory):
+        if filename.endswith('.mat'):
+            mat_data = scipy.io.loadmat(os.path.join(directory,filename))
+            patient_id = generate_patient_id()
+            your_variable = mat_data['images']
+            for i in range(your_variable.shape[2]):
+                image = Image.fromarray(your_variable[:,:,i].astype(np.uint8))
+                image_filename = f"A2A_{dis}_{patient_id}_{i+1}.jpeg"
+                image.save(os.path.join(output_directory,image_filename))
+
+
 def generate_unique_patient_id(existing_ids):
     new_id = str(random.randint(1000, 9999))
     while new_id in existing_ids:
@@ -78,8 +99,17 @@ if __name__ == "__main__":
     dataset_path = 'D:\\ZhangLabData\\CellData\\OCT\\train'
     output_folder = 'D:\oct_all_data'
     zh_dataset(dataset_path, output_folder,dataset_name)
-    # dataset_name = 'NEH'
-    # dataset_path = 'D:\\NEH_UT_2021RetinalOCTDataset\\NEH_UT_2021RetinalOCTDataset'
-    # output_folder = 'D:\\oct_all_data'
-    # nhi = NEH_dataset(dataset_path, output_folder,dataset_name)
-    # print(nhi)
+    dataset_name = 'NEH'
+    dataset_path = 'D:\\NEH_UT_2021RetinalOCTDataset\\NEH_UT_2021RetinalOCTDataset'
+    output_folder = 'D:\\oct_all_data'
+    nhi = NEH_dataset(dataset_path, output_folder,dataset_name)
+    dataset_name = 'zhang'
+    dataset_path = 'D:\\ZhangLabData\\CellData\\OCT\\test'
+    output_folder = 'D:\oct_all_data'
+    zh_dataset(dataset_path, output_folder,dataset_name)
+    directory = 'D:\oct_36gb\Control 2\Control 2'
+    output_directory = 'D:\oct_36gb_clean'
+    A2A_dataset(directory,output_directory,'NORMAL')
+    directory = 'D:\oct_36gb\AMD 2\AMD 2'
+    output_directory = 'D:\oct_36gb_clean'
+    A2A_dataset(directory,output_directory,'AMD')
