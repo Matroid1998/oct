@@ -27,6 +27,7 @@ class CustomNTXentLoss(torch.nn.Module):
 if __name__ == '__main__':
     batch_size = 32
     feature_dim = 512
+    temperature = 0.5
     anchor = torch.randn(batch_size, feature_dim)
     positive = torch.randn(batch_size, feature_dim)
     negatives = [torch.randn(batch_size, feature_dim) for _ in range(10)]  # 10 negative samples

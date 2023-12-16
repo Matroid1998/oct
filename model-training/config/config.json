@@ -1,0 +1,13 @@
+{
+    "train_data_path": "D:\\octalldata",
+    "batch_size": 2,
+    "num_epochs": 10,
+    "learning_rate": 0.001,
+    "weight_decay": 1e-4,
+    "scheduler_step_size": 5,
+    "scheduler_gamma": 0.5,
+    "save_interval": 100,
+    "num_negatives": 10,
+    "output_dim": 512,
+    "temperature": 0.5
+}
