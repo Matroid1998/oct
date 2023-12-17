@@ -21,7 +21,7 @@ batch_size = config["batch_size"]
 scheduler_step_size = config["scheduler_step_size"]
 scheduler_gamma = config["scheduler_gamma"]
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-saved_model_path = config['']
+saved_model_path = config['saved_model_path']
 
 def read_worstcase_images(file_path,csv_path,imageSize = 299):
     df = pd.read_csv(csv_path)
@@ -79,7 +79,9 @@ num_epochs = num_epochs
 learning_rate = learning_rate
 X = [img for patient_imgs in X_patient for img in patient_imgs]
 y = [label for patient_labels in y_patient for label in patient_labels]
-y = torch.tensor(y)
+X = torch.stack(X)
+y = torch.tensor(y, dtype=torch.long)
+print(X.shape)
 X_train, X_eval, y_train, y_eval = train_test_split(X, y, test_size=0.2, shuffle=True)
 train_dataset = TensorDataset(X_train, y_train)
 eval_dataset = TensorDataset(X_eval, y_eval)

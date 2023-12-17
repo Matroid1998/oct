@@ -1,11 +1,11 @@
 {
     "learning_rate": 1e-5,
     "weight_decay": 1e-4,
-    "dataset_path": "D:\\NEH_UT_2021RetinalOCTDataset\\NEH_UT_2021RetinalOCTDataset",
+    "dataset_path": "/home/mehdi/OCT/datasets/NEH_UT_2021RetinalOCTDataset/NEH_UT_2021RetinalOCTDataset",
     "csv_path": "data_information.csv",
-    "saved_model_path": "saved_model",
+    "saved_model_path": "/home/mehdi/OCT/code/contrastive_oct/oct/model-training/saved_models/best_model_batch_1_4500_20231216_154551.pth",
     "num_epochs": 3,
-    "batch_size": 2,
-    "scheduler_step_size": 1,
-    "scheduler_gamma": 0.9
+    "batch_size": 20,
+    "scheduler_step_size": 200,
+    "scheduler_gamma": 0.5
 }
