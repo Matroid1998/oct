@@ -32,6 +32,14 @@ def read_worstcase_images(file_path,csv_path,imageSize = 299):
         transforms.Resize((imageSize,imageSize)),
         transforms.ToTensor()
     ])
+    mean = config["mean"]
+    std = config["std"]
+
+    transform = transforms.Compose([
+        transforms.Resize((imageSize, imageSize)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std)  # Normalization with calculated stats
+    ])
 
     for patient_class in np.unique(df['Class']):
         df_classwise = df[df['Class'] == patient_class]

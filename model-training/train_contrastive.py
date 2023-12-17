@@ -10,6 +10,8 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 import json
+from PIL import Image
+import numpy as np
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.multiprocessing.set_sharing_strategy('file_system')
 with open('config\config.json', 'r') as config_file:
@@ -29,13 +31,36 @@ timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 tb_writer = SummaryWriter('OCT_trainer')
 data_paths = [os.path.join(train_data_paths,file) for file in os.listdir(train_data_paths) if
               os.path.isfile(os.path.join(train_data_paths,file))]
+def calculate_dataset_stats(data_paths):
+    transform = transforms.Compose([transforms.ToTensor()])
+    total_sum = np.zeros(3)
+    total_square_sum = np.zeros(3)
+    num_pixels = 0
+
+    for path in data_paths:
+        image = Image.open(path).convert('RGB')
+        tensor = transform(image)
+        total_sum += tensor.mean([1, 2]).numpy()
+        total_square_sum += (tensor ** 2).mean([1, 2]).numpy()
+        num_pixels += tensor.size(1) * tensor.size(2)
+
+    mean = total_sum / len(data_paths)
+    std = np.sqrt(total_square_sum / len(data_paths) - mean ** 2)
+    return mean, std
+
+# Calculate mean and std
+mean, std = calculate_dataset_stats(data_paths)
+print("Calculated Mean:", mean)
+print("Calculated Std:", std)
+
 train_transforms = transforms.Compose([
     transforms.RandomRotation(20),
-    transforms.RandomResizedCrop((299,299), scale=(0.8, 1.0), ratio=(0.75, 1.33), antialias=True),
+    transforms.RandomResizedCrop((299, 299), scale=(0.8, 1.0), ratio=(0.75, 1.33), antialias=True),
     transforms.ColorJitter(brightness=0.1, contrast=0.1),
     transforms.RandomVerticalFlip(),
     transforms.RandomApply([transforms.GaussianBlur(kernel_size=3)], p=0.2),
     transforms.ToTensor(),
+    transforms.Normalize(mean=mean, std=std)  # Normalization step
 ])
 model = ContrastiveModel(output_dim=output_dim).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
