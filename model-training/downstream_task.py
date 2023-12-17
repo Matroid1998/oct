@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
 import json
-
+from tqdm import tqdm
 with open('config/downstream_config.json') as config_file:
     config = json.load(config_file)
 learning_rate = config["learning_rate"]
@@ -72,7 +72,7 @@ class FineTunedContrastiveModel(nn.Module):
 
 original_model = ContrastiveModel(output_dim=512)
 original_model.load_state_dict(torch.load(saved_model_path))
-model = FineTunedContrastiveModel(original_model, num_classes=3)
+model = FineTunedContrastiveModel(original_model, num_classes=3).to(device)
 
 X_patient, y_patient = read_worstcase_images(dataset_path, csv_path)
 num_epochs = num_epochs
@@ -91,13 +91,14 @@ loss_fn = nn.CrossEntropyLoss()
 num_classes = 3
 for epoch in range(num_epochs):
     model.train()
+    train_progress_bar = tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Training Epoch {epoch+1}/{num_epochs}")
     total_train_loss = 0
     correct_train = 0
     total_train = 0
     class_correct = list(0. for i in range(num_classes))
     class_total = list(0. for i in range(num_classes))
-
-    for batch_idx, (inputs, labels) in enumerate(train_loader):
+    train_progress_bar.set_postfix({'Train Loss':loss.item()})
+    for batch_idx, (inputs, labels) in train_progress_bar:
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -109,7 +110,7 @@ for epoch in range(num_epochs):
         _, predicted = torch.max(outputs, 1)
         correct_train += (predicted == labels).sum().item()
         total_train += labels.size(0)
-
+        train_progress_bar.set_postfix({'Train Loss':loss.item()})
         c = (predicted == labels).squeeze()
         for i in range(labels.size(0)):
             label = labels[i]
