@@ -1,0 +1,11 @@
+{
+    "learning_rate": 1e-5,
+    "weight_decay": 1e-4,
+    "dataset_path": "D:\\NEH_UT_2021RetinalOCTDataset\\NEH_UT_2021RetinalOCTDataset",
+    "csv_path": "data_information.csv",
+    "saved_model_path": "saved_model",
+    "num_epochs": 3,
+    "batch_size": 2,
+    "scheduler_step_size": 1,
+    "scheduler_gamma": 0.9
+}

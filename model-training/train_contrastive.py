@@ -11,7 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import StepLR
 import json
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+torch.multiprocessing.set_sharing_strategy('file_system')
 with open('config\config.json', 'r') as config_file:
     config = json.load(config_file)
 train_data_paths = config["train_data_path"]
@@ -41,7 +41,9 @@ model = ContrastiveModel(output_dim=output_dim).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
 loss_fn = CustomNTXentLoss(temperature=temperature)
-train_loader = DataLoader(ContrastiveOCTDataset(data_paths,num_negatives = num_negatives, transform=train_transforms), batch_size=batch_size, shuffle=True)
+train_loader = DataLoader(ContrastiveOCTDataset(data_paths,num_negatives = num_negatives,
+                                                transform=train_transforms), batch_size=batch_size, shuffle=True
+                                                ,num_workers = 12)
 log_filename = f"logs\\training_log_{timestamp}.txt"
 best_loss = float('inf')
 best_model_paths = [None, None]
