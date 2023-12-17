@@ -99,7 +99,6 @@ for epoch in range(num_epochs):
     total_train = 0
     class_correct = list(0. for i in range(num_classes))
     class_total = list(0. for i in range(num_classes))
-    train_progress_bar.set_postfix({'Train Loss':loss.item()})
     for batch_idx, (inputs, labels) in train_progress_bar:
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
